@@ -1,51 +1,50 @@
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
-public class sharePicClient {
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 
-  public final static int SOCKET_PORT = 8888;      // port number
+public class sharePicClient extends JFrame{
+
+  public final static int SOCKET_PORT = 8888;      
   public final static String SERVER = "127.0.0.1";  // localhost
-  public final static String
-       FILE_TO_RECEIVED = "/Users/Bill/source-downloaded.jpg";  
-
+  public final static String File_JPG = "/Users/Bill/source.jpg";  
   public final static int FILE_SIZE = 6022386; 
   public static void main (String [] args ) throws IOException {
-    int bytesRead;
-    int current = 0;
-    FileOutputStream fos = null;
-    BufferedOutputStream bos = null;
-    Socket sock = null;
-    try {
-      sock = new Socket(SERVER, SOCKET_PORT);
-      System.out.println("Connecting...");
+	  	sharePicClient frame = new sharePicClient();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setLayout(new BorderLayout());
+		frame.setSize(new Dimension(300,500));
+		Socket sock = new Socket(SERVER, SOCKET_PORT);
+//	    byte[] receivingbytearray = new byte[FILE_SIZE];
+//	    InputStream is = sock.getInputStream();
+//	    FileOutputStream fos = new FileOutputStream(FILE_TO_RECEIVED);
+//	    BufferedOutputStream bos = new BufferedOutputStream(fos);
+		BufferedImage img= ImageIO.read(ImageIO.createImageInputStream(sock.getInputStream()));
+		frame.add(new JLabel(new ImageIcon(img)),BorderLayout.CENTER);
+		frame.setVisible(true);
+		sock.close();
 
-      // receive file
-      byte [] mybytearray  = new byte [FILE_SIZE];
-      InputStream is = sock.getInputStream();
-      fos = new FileOutputStream(FILE_TO_RECEIVED);
-      bos = new BufferedOutputStream(fos);
-      bytesRead = is.read(mybytearray,0,mybytearray.length);
-      current = bytesRead;
-
-      do {
-         bytesRead =
-            is.read(mybytearray, current, (mybytearray.length-current));
-         if(bytesRead >= 0) current += bytesRead;
-      } while(bytesRead > -1 && current<mybytearray.length);
-
-      bos.write(mybytearray, 0 , current);
-      bos.flush();
-      System.out.println("File " + FILE_TO_RECEIVED
-          + " downloaded (" + current + " bytes read)");
-    }
-    finally {
-      if (fos != null) fos.close();
-      if (bos != null) bos.close();
-      if (sock != null) sock.close();
-    }
+	    
+//	    int receivedBytes = is.read(receivingbytearray, 0, receivingbytearray.length);
+//	    int current = receivedBytes;
+//	    do {
+//	    	receivedBytes = is.read(receivingbytearray, current, (receivingbytearray.length-current));
+//	    	if(receivedBytes >= 0) current = current + receivedBytes;
+//	    } while(receivedBytes > -1);
+//	    bos.write(receivingbytearray, 0 , current);
+//	    bos.flush();
+//	    bos.close();
+//	    sock.close();
   }
 
 }

@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,22 +13,24 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 
-public class sharePicServer extends JFrame implements Runnable {
+public class sharePicSender extends JFrame implements Runnable {
 
 	public final int SOCKET_PORT = 8888; // port number
-	public File fileToSend; // file to transfer
-	boolean startFlag = false;
+	//public File fileToSend = new File("/Users/Bill/source.jpg"); // file to transfer
+	File fileToSend;
+	boolean startFlag = true;
 	JButton startListeningButton;
 	JButton chooseFileButton;
 	JLabel infoLabel;
 	ServerSocket servsock;
 
-	sharePicServer() {
+	sharePicSender() {
 		setTitle("SendPic"); // set title
 		int frameWidth = 400, frameHeight = 300;
-		Dimension buttonDimension = new Dimension(frameWidth / 2,
+		Dimension buttonDimension = new Dimension(frameWidth ,
 				frameHeight / 2);
 		setSize(frameWidth, frameHeight);
 		setLayout(new BorderLayout());
@@ -46,13 +49,13 @@ public class sharePicServer extends JFrame implements Runnable {
 		infoLabel.setPreferredSize(new Dimension(frameWidth, frameHeight / 2));
 		// add them to frame
 		add(startListeningButton, BorderLayout.WEST);
-		add(chooseFileButton, BorderLayout.EAST);
+		//add(chooseFileButton, BorderLayout.EAST);
 		add(infoLabel, BorderLayout.SOUTH);
 	}
 
 	// create GUI
 	private static void createAndShowGui() {
-		sharePicServer frame = new sharePicServer();
+		sharePicSender frame = new sharePicSender();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setLocationRelativeTo(null);
 		frame.setVisible(true);
@@ -62,7 +65,8 @@ public class sharePicServer extends JFrame implements Runnable {
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			// start socket listening
-			(new Thread(new sharePicServer())).start();
+			startFlag = true;
+			(new Thread(new sharePicSender())).start();
 			infoLabel.setText("Start Listening at port" + SOCKET_PORT);
 		}
 	}
@@ -70,15 +74,12 @@ public class sharePicServer extends JFrame implements Runnable {
 	class chooseFileListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			JFileChooser fc = new JFileChooser();
-			int returnVal = fc.showOpenDialog(sharePicServer.this);
-
-			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				fileToSend = fc.getSelectedFile();
-				// This is where a real application would open the file.
-				infoLabel.setText("Opening: " + fileToSend.getName() + ".");
-			}
-
+				JFileChooser fc = new JFileChooser();
+				int returnVal = fc.showOpenDialog(sharePicSender.this);
+				if (returnVal == JFileChooser.APPROVE_OPTION) {
+					fileToSend = fc.getSelectedFile();
+					infoLabel.setText("Opening: " + fileToSend.getName() + ".");
+				}
 		}
 	}
 	public static void main(String[] args) {
@@ -87,61 +88,32 @@ public class sharePicServer extends JFrame implements Runnable {
 				createAndShowGui();
 			}
 		});
-
 	}
-
+	synchronized void sendPic() throws IOException {
+		JFileChooser fc = new JFileChooser();
+		int returnVal = fc.showOpenDialog(sharePicSender.this);
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			fileToSend = fc.getSelectedFile();
+			infoLabel.setText("Opening: " + fileToSend.getName() + ".");
+		}
+		ServerSocket servsock = new ServerSocket(SOCKET_PORT);
+		if (startFlag) {
+			Socket server = servsock.accept();
+			
+		    BufferedImage bimg=ImageIO.read(fileToSend);
+		    OutputStream os = server.getOutputStream();
+			ImageIO.write(bimg,"jpg",os);
+			os.close();
+			servsock.close();
+			//System.exit(0);
+		}
+	}
+	
 	public void run() {
 		try {
-			servsock = new ServerSocket(SOCKET_PORT);
-			while (true) {
-				FileInputStream fis = null;
-				BufferedInputStream bis = null;
-				OutputStream os = null;
-				Socket sock = null;
-
-				int read = 0;
-				int numRead = 0;
-				while (startFlag) {
-					infoLabel.setText("Waiting..");
-					try {
-						sock = servsock.accept();
-						infoLabel.setText("Connection accepted: " + sock);
-						// send file
-						int fileLength = (int) fileToSend.length();
-						byte[] byteToSendArray = new byte[fileLength];
-						fis = new FileInputStream(fileToSend);
-						bis = new BufferedInputStream(fis);
-						while (read < fileLength
-								&& (numRead = bis.read(byteToSendArray, read,
-										fileLength - numRead)) >= 0)
-							read += numRead;
-						os = sock.getOutputStream();
-						os.write(byteToSendArray, 0, fileLength);
-						os.flush();
-						infoLabel.setText(fileToSend + "("
-										+ byteToSendArray.length + " bytes)"
-										+ " Done.");
-					} finally {
-						if (bis != null)
-							bis.close();
-						if (os != null)
-							os.close();
-						if (sock != null)
-							sock.close();
-					}
-				}
-			}
-		} catch (IOException e){
+			sendPic();
+		} catch (IOException e) {
 			e.printStackTrace();
-		}
-		finally {
-			if (servsock != null)
-				try {
-					servsock.close();
-				} catch (IOException e) {
-
-					e.printStackTrace();
-				}
 		}
 	}
 
